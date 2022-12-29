@@ -36,11 +36,12 @@ void synchronize(int total_threads)
     pthread_mutex_unlock(&mutex);
 }
 
-int decomp(double *matrix, double *Q, double *coss, double *sinn, double *x, double *y, double *r, int n, int thread_num, int total) {
-    int l_r = thread_num * n / total;
-    int r_r = (thread_num + 1) * n / total;
+int decomp(double *matrix, double *Q, double *coss, double *sinn, double *x, double *y, double *r, double *tmp, /*double *ans,*/ int n, int t, int total) {
+//    int L = thread_num * n / total;
+//    int R = (thread_num + 1) * n / total;
 //    double x, y, r;
-    for (int i = l_r; i < r_r; i++) {
+//if(t == 0){
+    for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             x[i * n + j] = matrix[i + i * n];
             y[i * n + j] = matrix[i + j * n];
@@ -52,42 +53,45 @@ int decomp(double *matrix, double *Q, double *coss, double *sinn, double *x, dou
             sinn[i * n + j] = -1 * (y[i * n + j] / r[i * n + j]);
             matrix[i * n + i] = r[i * n + j];
             matrix[j * n + i] = 0.0;
+//            synchronize(total);
             for (int k = i + 1; k < n; k++) {
                 x[i * n + j] = matrix[i * n + k];
                 y[i * n + j] = matrix[j * n + k];
                 matrix[i * n + k] = x[i * n + j] * coss[i * n + j] - y[i * n + j] * sinn[i * n + j];
                 matrix[j * n + k] = x[i * n + j] * sinn[i * n + j] + y[i * n + j] * coss[i * n + j];
             }
+//            synchronize(total);
             for (int k = 0; k < n; k++) {
                 x[i * n + j] = Q[k * n + i];
                 y[i * n + j] = Q[k * n + j];
                 Q[k * n + i] = x[i * n + j] * coss[i * n + j] - y[i * n + j] * sinn[i * n + j];
                 Q[k * n + j] = x[i * n + j] * sinn[i * n + j] + y[i * n + j] * coss[i * n + j];
             }
+//            synchronize(total);
         }
     }
-    synchronize(total);
     if (fabs(matrix[n - 1 + (n - 1) * n]) < 1e-100) {
         cout << "Матрица вырожденна" << endl;
         return -4;
     }
+//}
     synchronize(total);
     for (int i = 0; i < n; i++) {
-        for (int j = i; j < n; j++) {
+        for (int j = i + t; j < n; j += total) {
             swap(Q[i * n + j], Q[j * n + i]);
         }
     }
     synchronize(total);
-    for (int i = 0; i < n; i++) {  //proizved
+    for (int i = t; i < n; i += total) {  //proizved
         for (int j = n - 1; j >= 0; j--) {
-        double tmp;
-        tmp = Q[j * n + i];
+        tmp[j] = Q[j * n + i];
         for (int k = j + 1; k < n; k++) {
-            tmp -= matrix[j * n + k] * Q[k * n + i];
+            tmp[j] -= matrix[j * n + k] * Q[k * n + i];
         }
-        Q[j * n + i] = tmp / matrix[j * n + j];
+        Q[j * n + i] = tmp[j] / matrix[j * n + j];
         }
     }
+    synchronize(total);
     return 1;
 }
 

@@ -1,4 +1,3 @@
-
 #include "matrix_input.h"
 #include "reverse.h"
 #include <cstdlib>
@@ -35,6 +34,8 @@ typedef struct _ARGS {
     double *X; // = NULL;
     double *Y; // = NULL;
     double *R; // = NULL;
+    double *tmp; // = NULL;
+//    double *ans; // = NULL;
     int n;
     int thread_num;
     int total_threads;
@@ -48,7 +49,7 @@ void *Func(void *p_arg) { //rename later
     ARGS *arg = (ARGS *)p_arg;
     unsigned long long time;
     time = currentTimeNano();
-    if (decomp(arg->a, arg->q, arg->coss,arg->sinn, arg->X, arg->Y, arg->R, arg->n, arg->thread_num, arg->total_threads) == -4) {
+    if (decomp(arg->a, arg->q, arg->coss,arg->sinn, arg->X, arg->Y, arg->R, arg->tmp, arg->n, arg->thread_num, arg->total_threads) == -4) {
         check = false;
     }
     pthread_mutex_lock(&mutexx);
@@ -137,6 +138,8 @@ int main(int argc, char *argv[]) {
   double *X = new double[n * n];
   double *Y = new double[n * n];
   double *R = new double[n * n];
+  double *tmp = new double[n];
+//  double *ans = new double[n * n];
 
   ARGS *args;
   args = new ARGS[po];
@@ -151,13 +154,14 @@ int main(int argc, char *argv[]) {
 	args[i].X = X;
 	args[i].Y = Y;
 	args[i].R = R;
+	args[i].tmp = tmp;
+//	args[i].ans = ans;
 	args[i].n = n;
 	args[i].thread_num = i;
 	args[i].total_threads = po;
   }
     unsigned long long time;
     time = currentTimeNano();
-    
     for (int i = 0; i < po; i++) {
         if (pthread_create(threads + i, 0, Func, args + i)) {
             cout << "Can not create thread " << i << '!' << endl;
@@ -204,11 +208,14 @@ int main(int argc, char *argv[]) {
         delete[] X;
         delete[] Y;
         delete[] R;
+        delete[] tmp;
+//        delete[] ans;
         delete[] args;
         delete[] threads;
         return -4;
     }
   cout << "Inverse: " << endl;
+  //prnt(matrix, m, n);
   prnt(q, m, n);
   if (k == 0) {
     rtrn_val = read_file(argv[5], matrix, n);
@@ -224,6 +231,8 @@ int main(int argc, char *argv[]) {
         delete[] X;
         delete[] Y;
         delete[] R;
+//        delete[] ans;
+        delete[] tmp;
   delete[] args;
   return 0;
 }
